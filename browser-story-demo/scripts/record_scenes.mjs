@@ -97,6 +97,15 @@ async function recordScene(scene) {
     const context = await browser.newContext({ viewport: null });
     const page = await context.newPage();
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    const zoom = Number(browserConfig.zoom || 100);
+    if (zoom !== 100) {
+      await page.evaluate((value) => {
+        document.documentElement.style.zoom = `${value}%`;
+      }, zoom);
+    }
+    await page.addStyleTag({
+      content: '.demo-capture-highlight { outline: 4px solid #f59e0b !important; outline-offset: 5px !important; box-shadow: 0 0 0 9px rgba(245,158,11,.22), 0 0 28px rgba(245,158,11,.55) !important; border-radius: 8px !important; position: relative; z-index: 20 !important; }'
+    });
     await page.locator(manifest.ready_selector || 'html[data-capture-ready="true"]')
       .waitFor({ state: 'attached', timeout: 15000 });
 
@@ -106,8 +115,8 @@ async function recordScene(scene) {
       '-capture_cursor', '1',
       '-capture_mouse_clicks', '1',
       '-framerate', String(fps),
+      '-pixel_format', captureConfig.pixel_format || 'uyvy422',
       '-i', screen,
-      '-vf', `crop=${cropBox.width}:${cropBox.height}:${cropBox.x}:${cropBox.y}`,
       '-an', '-c:v', 'libx264', '-pix_fmt', captureConfig.pixel_format || 'yuv420p', raw,
     ], { stdio: ['pipe', 'inherit', 'inherit'] });
 
@@ -117,20 +126,87 @@ async function recordScene(scene) {
       document.documentElement.dataset.captureStarted = 'true';
       delete document.documentElement.dataset.capturePaused;
     });
+    const interactionTimeline = runInteractionTimeline(page, scene.interactions || []);
     await sleep(duration * 1000);
+    await interactionTimeline;
     recorder.stdin.write('q\n');
     await waitForClose(recorder);
-    await trimCapture(ffmpeg, raw, output, warmupMs / 1000, duration, fps, captureConfig.pixel_format || 'yuv420p');
+    await trimCapture(ffmpeg, raw, output, warmupMs / 1000, duration, fps, captureConfig.pixel_format || 'yuv420p', cropBox);
   } finally {
     await browser.close();
   }
 }
 
-function trimCapture(ffmpeg, input, output, offset, duration, fps, pixelFormat) {
+async function runInteractionTimeline(page, interactions) {
+  const startedAt = Date.now();
+  for (const step of interactions) {
+    const targetMs = Math.max(0, Number(step.at_seconds || 0) * 1000);
+    const remainingMs = targetMs - (Date.now() - startedAt);
+    if (remainingMs > 0) await sleep(remainingMs);
+    let locator = step.selector
+      ? page.locator(step.selector)
+      : step.text
+        ? page.getByText(String(step.text), { exact: step.exact === true }).first()
+        : null;
+    if (locator && Number.isInteger(step.index)) locator = locator.nth(step.index);
+    if (locator && step.action !== 'highlight') await locator.scrollIntoViewIfNeeded();
+    if (locator && step.action !== 'highlight') {
+      const box = await locator.boundingBox();
+      if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+    }
+    switch (step.action) {
+      case 'select':
+        await locator.selectOption(String(step.value));
+        break;
+      case 'click':
+        await locator.click();
+        break;
+      case 'scroll':
+        await smoothScroll(page, Number(step.delta_y || 650), Number(step.duration_ms || 1400));
+        break;
+      case 'highlight':
+        await page.evaluate(() => {
+          document.querySelectorAll('.demo-capture-highlight').forEach((node) => node.classList.remove('demo-capture-highlight'));
+        });
+        await locator.evaluate((node, shouldScroll) => {
+          node.classList.add('demo-capture-highlight');
+          if (shouldScroll) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, step.scroll !== false);
+        await sleep(Number(step.duration_ms || 900));
+        const highlightBox = await locator.boundingBox();
+        if (highlightBox) await page.mouse.move(highlightBox.x + highlightBox.width / 2, highlightBox.y + highlightBox.height / 2, { steps: 12 });
+        break;
+      case 'wait':
+        await sleep(Number(step.duration_ms || 500));
+        break;
+      default:
+        throw new Error(`Unsupported interaction action: ${step.action}`);
+    }
+  }
+}
+
+async function smoothScroll(page, delta, durationMs) {
+  await page.evaluate(({ delta: distance, duration }) => new Promise((resolve) => {
+    const start = performance.now();
+    const origin = window.scrollY;
+    const ease = (value) => value < 0.5
+      ? 4 * value * value * value
+      : 1 - Math.pow(-2 * value + 2, 3) / 2;
+    const frame = (now) => {
+      const progress = Math.min(1, (now - start) / duration);
+      window.scrollTo(0, origin + distance * ease(progress));
+      if (progress < 1) requestAnimationFrame(frame);
+      else resolve();
+    };
+    requestAnimationFrame(frame);
+  }), { delta, duration: durationMs });
+}
+
+function trimCapture(ffmpeg, input, output, offset, duration, fps, pixelFormat, cropBox) {
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpeg, [
       '-y', '-hide_banner', '-loglevel', 'error', '-ss', String(offset), '-i', input,
-      '-t', String(duration), '-r', String(fps), '-an', '-c:v', 'libx264',
+      '-t', String(duration), '-r', String(fps), '-vf', `crop=${cropBox.width}:${cropBox.height}:${cropBox.x}:${cropBox.y}`, '-an', '-c:v', 'libx264',
       '-pix_fmt', pixelFormat, output,
     ], { stdio: ['ignore', 'inherit', 'inherit'] });
     child.once('error', reject);

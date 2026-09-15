@@ -17,9 +17,9 @@ capture:
   screen: 6
   display: built-in
   native_dimensions: 3024x1964
-  crop: 3024x1700+0+0
-  output_dimensions: 3024x1700
-  pixel_format: yuv420p
+  crop: 3024x1699+0+265
+  output_dimensions: 3024x1699
+  pixel_format: uyvy422
   frame_rate: 30
 
 scenes:
@@ -54,6 +54,24 @@ Recommended capture fields:
 - `capture.output_dimensions`: final encoded frame dimensions.
 - `capture.pixel_format`.
 - `capture.frame_rate`.
+
+The recorder preserves the full native capture in `raw/`. `capture.crop` is applied
+only when creating the final clip, so `3024x1699+0+265` means crop a 3024×1699
+rectangle from physical source coordinates x=0, y=265. Keep the raw file when
+iterating on framing.
+
+Scenes may define an `interactions` timeline. Each step supports `at_seconds` and
+one of:
+
+- `select`: `selector`, optional `index`, and `value`.
+- `click`: `selector`, optional `index`.
+- `scroll`: optional `delta_y` and `duration_ms`; scrolling is eased continuously.
+- `highlight`: `selector` or `text`, optional `exact`, `duration_ms`, and
+  `scroll: false` when the target is already visible.
+- `wait`: optional `duration_ms`.
+
+Use exact text targets for repeated section names and give important validation or
+stage headings enough hold time for the narration.
 
 Each scene should have:
 

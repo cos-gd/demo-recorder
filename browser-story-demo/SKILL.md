@@ -79,8 +79,9 @@ node scripts/record_scenes.mjs
 
 Inspect that clip before using `ALL_SCENES=1`. The recorder opens a fresh headed
 browser, waits for the ready selector, starts FFmpeg, releases the capture pause,
-records the target duration, and trims the warmup. It writes the untouched raw
-capture under `raw/` and the final H.264 clip under `final/`.
+records the target duration, and trims the warmup. It writes a full native-display
+raw capture under `raw/`, then applies the manifest crop only while creating the
+final H.264 clip under `final/`. Preserve the raw file for later framing changes.
 
 If a scene is wrong, rerun only that scene. Preserve the prior raw capture by
 archiving it or using a new output directory before rerunning; do not re-record
@@ -112,6 +113,15 @@ state separately from media output. Do not concatenate scenes unless requested.
   fixed across scenes.
 - Treat logical browser viewport, physical capture surface, and final video frame as
   separate dimensions.
+- Treat `capture.crop` as physical-pixel geometry. Verify it against a representative
+  frame; do not infer Retina crop offsets from CSS viewport units.
+- Keep the browser window and FFmpeg capture on the same physical display. The
+  AVFoundation `screen` index and browser `WINDOW_X`/`WINDOW_Y` placement are
+  independent settings and must both be verified when multiple displays are
+  connected.
+- Use scene `interactions` for real UI demonstrations. Supported actions are
+  `select`, `click`, `scroll`, `highlight`, and `wait`; use timed steps, smooth
+  scrolling, exact text targets, and visible cursor movement for narrated beats.
 - Preserve user-supplied durations unless a change is explicitly agreed.
 - Keep raw captures unchanged when creating corrected clips or overlays.
 - Do not concatenate scenes unless requested.
@@ -156,8 +166,9 @@ node scripts/record_scenes.mjs
 
 Set `ALL_SCENES=1` only when the full manifest should be recorded. The recorder
 requires a headed Brave session, the configured screen-capture backend, and FFmpeg.
-It pauses scene animations until capture begins, preserves the full raw capture, and
-writes a target-duration H.264 final clip.
+It pauses scene animations until capture begins, preserves the full native raw
+capture, applies the final crop during trim, and writes a target-duration H.264
+final clip.
 
 Validate final clips with:
 
