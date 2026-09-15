@@ -10,18 +10,96 @@ animation, narration alignment, and video clips.
 
 ## Workflow
 
-1. Inspect existing narrative, narration, demo code, assets, local server commands,
-   and prior recordings. Preserve existing user changes.
-2. Create or update one scene manifest. Treat it as the source of truth for scene
-   order, narration mapping, duration, browser state, capture geometry, and output.
-3. Keep business narration separate from production instructions.
-4. Build deterministic scenes with direct addressing, such as `?scene=07`, and a
-   capture-ready DOM signal.
-5. Validate the manifest, narration mapping, layout, animation timing, and capture
-   geometry before recording.
-6. Record one independent clip per scene in a fresh headed-browser state. Preserve
-   raw captures and replace only the scene being corrected.
-7. Validate every final clip and produce a duration/media handoff report.
+Work through these gates in order. Do not start a full recording run while an
+earlier gate is unresolved.
+
+### 1. Inspect the project
+
+Identify the narrative and narration files, browser entrypoint, local server
+command, assets, existing recordings, browser-testing instructions, and capture
+display. Preserve existing user changes. Record any missing input as an explicit
+open question; do not fill it with invented application data or runtime state.
+
+### 2. Plan the scenes
+
+Create or update exactly one scene manifest for the deliverable. It is the source
+of truth for scene order, narration mapping, duration, browser state, capture
+geometry, mode, and output naming. Keep business narration separate from
+animation and recording instructions.
+
+For each scene, define its purpose, visual state, target duration, direct route or
+scene number, expected final state, and safety classification. Mark
+`live-mutating` scenes before any recording and obtain explicit authorization
+before changing durable state.
+
+### 3. Build a deterministic artifact
+
+The browser artifact must:
+
+- support direct scene selection, such as `?scene=07`;
+- reset scene state on every load;
+- expose `html[data-capture-ready="true"]` after layout and assets are ready;
+- support manual review with previous/next controls or keyboard navigation; and
+- keep static animation visibly distinct from verified live application behavior.
+
+Use local fixtures and replayable states. Do not claim that a static animation
+proves a product or deployment change.
+
+### 4. Validate before recording
+
+Run the structural check first:
+
+```bash
+python3 scripts/validate_manifest.py path/to/scene-manifest.yaml
+```
+
+Then manually verify the checks the validator cannot prove:
+
+- every manifest scene resolves to the intended browser scene;
+- narration sections and scene numbers map one-to-one, unless an omission is documented;
+- text, layout, animation cues, and final state fit the target duration;
+- logical viewport, physical capture surface, crop, and encoded dimensions agree;
+- the browser is fully on the selected display at the documented zoom; and
+- one representative frame is readable and correctly cropped.
+
+Read `references/capture-checklist.md` before recording. Use a project-specific
+browser-testing skill for browser verification when one exists.
+
+### 5. Record independently editable clips
+
+Start the local server, then record one scene first:
+
+```bash
+MANIFEST=path/to/scene-manifest.yaml \
+DEMO_URL=http://127.0.0.1:4174/ \
+SCENE=2 \
+OUTPUT_DIR=/private/tmp/demo-recordings \
+node scripts/record_scenes.mjs
+```
+
+Inspect that clip before using `ALL_SCENES=1`. The recorder opens a fresh headed
+browser, waits for the ready selector, starts FFmpeg, releases the capture pause,
+records the target duration, and trims the warmup. It writes the untouched raw
+capture under `raw/` and the final H.264 clip under `final/`.
+
+If a scene is wrong, rerun only that scene. Preserve the prior raw capture by
+archiving it or using a new output directory before rerunning; do not re-record
+unrelated scenes as part of a correction.
+
+### 6. Validate and hand off
+
+Run the media check after every recording set:
+
+```bash
+python3 scripts/validate_media.py \
+  path/to/scene-manifest.yaml \
+  /private/tmp/demo-recordings/final
+```
+
+Use `--scene NUMBER` for a corrected clip. Inspect representative frames and
+report, for each scene, the target and actual duration, output dimensions, codec,
+audio expectation, and any remaining uncertainty. Report application/runtime
+state separately from media output. Do not concatenate scenes unless requested.
 
 ## Operating rules
 
