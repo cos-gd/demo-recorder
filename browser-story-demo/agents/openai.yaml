@@ -1,0 +1,4 @@
+interface:
+  display_name: "Browser Story Demo"
+  short_description: "Build timed browser demos and record scene clips"
+  default_prompt: "Use $browser-story-demo to plan, build, validate, and record a timed browser-based demo."

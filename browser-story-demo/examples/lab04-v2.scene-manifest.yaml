@@ -1,0 +1,86 @@
+project: lab-04-recall-aware-product-master
+entrypoint: ../demo-v2/index.html
+output_dir: /private/tmp/lab04-v2-recordings
+scene_query_param: scene
+ready_selector: html[data-capture-ready="true"]
+
+browser:
+  viewport: 1512x982
+  zoom: 100
+  scale_factor: 2
+
+capture:
+  backend: avfoundation
+  screen: 6
+  display: built-in
+  native_dimensions: 3024x1964
+  crop: 3024x1700+0+0
+  output_dimensions: 3024x1700
+  pixel_format: yuv420p
+  frame_rate: 30
+
+scenes:
+  - id: scene-02
+    number: 2
+    title: The first idea
+    narration_section: Scene 2
+    duration_seconds: 13.9
+    visual_scene: 2
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-03
+    number: 3
+    title: What the first match cannot prove
+    narration_section: Scene 3
+    duration_seconds: 19.2
+    visual_scene: 3
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-04
+    number: 4
+    title: The decisions the business must make
+    narration_section: Scene 4
+    duration_seconds: 69.3
+    visual_scene: 4
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-05
+    number: 5
+    title: SpecData at work
+    narration_section: Scene 5
+    duration_seconds: 38.8
+    visual_scene: 5
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-06
+    number: 6
+    title: Review before build
+    narration_section: Scene 6
+    duration_seconds: 37.1
+    visual_scene: 6
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-07
+    number: 7
+    title: The shared product agreement
+    narration_section: Scene 7
+    duration_seconds: 65.6
+    visual_scene: 7
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-08
+    number: 8
+    title: One contract, many systems
+    narration_section: Scene 8
+    duration_seconds: 60.0
+    visual_scene: 8
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
+  - id: scene-09
+    number: 9
+    title: Closing
+    narration_section: Closing
+    duration_seconds: 23.2
+    visual_scene: 9
+    mode: animated-slide
+    capture: {fresh_page: true, audio: silent, cursor: visible}
